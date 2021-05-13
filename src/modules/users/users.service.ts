@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { sendConfirmationEmail } from 'src/core/config/nodemailer.config';
-import { CreateUserDto } from './dto/create-user.dto';
-import { InactiveUserDto } from './dto/inactive-user.dto';
+import {
+  sendConfirmationEmail,
+  sendForgotPasswordEmail,
+} from 'src/core/config/nodemailer.config';
 import { InactiveUser } from './models/inactiveUser.model';
 import { User } from './models/user.model';
+import { ForgotPasswordUser } from './models/forgotPasswordUser.model';
 
 @Injectable()
 export class UsersService {
@@ -13,14 +15,15 @@ export class UsersService {
     @InjectModel('User') private readonly userModel: Model<User>,
     @InjectModel('InactiveUser')
     private readonly inactiveUserModel: Model<InactiveUser>,
+    @InjectModel('ForgotPasswordUser')
+    private readonly forgotPasswordUserModel: Model<ForgotPasswordUser>,
   ) {}
 
-  async createInactiveUser(inactiveUser: InactiveUserDto) {
+  async createInactiveUser(inactiveUser: InactiveUser) {
     // create random code
     const randomCode = Math.floor(Math.random() * 10000);
     let date = new Date().getTime();
-
-    let doc = await this.inactiveUserModel.findOneAndUpdate(
+    return await this.inactiveUserModel.findOneAndUpdate(
       { email: inactiveUser.email },
       { ...inactiveUser, activationCode: randomCode, updatedAt: date },
       {
@@ -28,12 +31,6 @@ export class UsersService {
         upsert: true, // Make this update into an upsert
       },
     );
-    if (!doc) {
-      throw new NotFoundException('something went wrong');
-    }
-    sendConfirmationEmail(doc.name, doc.email, doc.activationCode);
-
-    return doc;
   }
 
   async create(inactiveUser): Promise<User> {
@@ -49,6 +46,29 @@ export class UsersService {
     return await newUser.save();
   }
 
+  async createForgotPasswordRequest(email: string) {
+    // create random code
+    const randomCode = Math.floor(Math.random() * 10000);
+    let date = new Date().getTime();
+    return await this.forgotPasswordUserModel.findOneAndUpdate(
+      { email },
+      { email, resetCode: randomCode, updatedAt: date },
+      {
+        new: true,
+        upsert: true, // Make this update into an upsert
+      },
+    );
+  }
+
+  async updateForgotPassword(email: string, password: string) {
+    let date = new Date().getTime();
+    return await this.userModel.findOneAndUpdate(
+      { email },
+      { email, password, updatedAt: date },
+      { new: true },
+    );
+  }
+
   async findOneByEmail(email: string): Promise<User> {
     return await this.userModel.findOne({ email: email }).exec();
   }
@@ -61,9 +81,31 @@ export class UsersService {
     return await this.inactiveUserModel.findOne({ activationCode }).exec();
   }
 
+  async findForgotPasswordUserByCode(
+    resetCode: number,
+  ): Promise<ForgotPasswordUser> {
+    return await this.forgotPasswordUserModel.findOne({ resetCode }).exec();
+  }
+
+  async findForgotPasswordUserByCodeAndEmail(
+    resetCode: number,
+    email: string,
+  ): Promise<ForgotPasswordUser> {
+    return await this.forgotPasswordUserModel
+      .findOne({ resetCode, email })
+      .exec();
+  }
+
   async deleteInactiveUser(activationCode: number): Promise<InactiveUser> {
     return await this.inactiveUserModel
       .findOneAndRemove({ activationCode })
       .exec();
+  }
+
+  async clearExpireInactiveUser() {
+    const currentDate = new Date().getTime() - 900000;
+    return await this.inactiveUserModel.deleteMany({
+      updatedAt: { $lt: currentDate },
+    });
   }
 }

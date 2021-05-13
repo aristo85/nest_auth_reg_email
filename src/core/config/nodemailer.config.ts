@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 import * as dotenv from 'dotenv';
-dotenv.config()
+dotenv.config();
 const user = process.env.HOST_MAIL;
 const pass = process.env.MAIL_PASS;
 const service = process.env.MAIL_SERVICE;
@@ -13,7 +13,6 @@ const transport = nodemailer.createTransport({
 });
 
 export const sendConfirmationEmail = (name, email, confirmationCode) => {
-
   console.log('Check', user, pass, service);
   transport
     .sendMail({
@@ -23,6 +22,21 @@ export const sendConfirmationEmail = (name, email, confirmationCode) => {
       html: `<h1>Email Confirmation</h1>
           <h2>Hello ${name}</h2>
           <p>Your confirmation code ${confirmationCode}</p>
+          </div>`,
+    })
+    .catch((err) => console.log(err));
+};
+
+export const sendForgotPasswordEmail = (email, resetCode) => {
+  console.log('Check', user, pass, service);
+  transport
+    .sendMail({
+      from: user,
+      to: email,
+      subject: 'Reset password',
+      html: `<h1>Email reset code</h1>
+          <h2>Hello</h2>
+          <p>Your reset code ${resetCode}</p>
           </div>`,
     })
     .catch((err) => console.log(err));

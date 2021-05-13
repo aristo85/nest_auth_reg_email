@@ -5,6 +5,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import {
+  sendConfirmationEmail,
+  sendForgotPasswordEmail,
+} from 'src/core/config/nodemailer.config';
+import { ForgotPasswordDto } from '../users/dto/forgotPassword.user.dto';
+import { PassUpdateUserDto } from '../users/dto/passUpdate-user.dto';
+import { User } from '../users/models/user.model';
 import { UsersService } from '../users/users.service';
 
 @Injectable()
@@ -40,15 +47,16 @@ export class AuthService {
   public async createInactiveUser(user) {
     // hash the password
     const pass = await this.hashPassword(user.password);
-
     // create the user
-    const newUser = await this.userService.createInactiveUser({
+    let doc = await this.userService.createInactiveUser({
       ...user,
       password: pass,
     });
-
-    // return the user and the token
-    return { user: newUser };
+    if (!doc) {
+      throw new NotFoundException('something went wrong');
+    }
+    sendConfirmationEmail(doc.name, doc.email, doc.activationCode);
+    return { success: true };
   }
 
   public async create(activationCode: number) {
@@ -78,6 +86,88 @@ export class AuthService {
 
     // return the user and the token
     return { user: result, token };
+  }
+
+  public async forgotPassword(email: string) {
+    // chek email
+    const user = await this.userService.findOneByEmail(email);
+    if (!user) {
+      throw new NotFoundException("This user doesn't exist");
+    }
+
+    // return the updated app
+    let doc = await this.userService.createForgotPasswordRequest(email);
+    if (!doc) {
+      throw new NotFoundException('something went wrong');
+    }
+    sendForgotPasswordEmail(doc.email, doc.resetCode);
+    return { success: true };
+  }
+
+  public async confirmResetForgotPassword(resetCode: number) {
+    let dateNow = new Date().getTime();
+    const forgotPassUser = await this.userService.findForgotPasswordUserByCode(
+      resetCode,
+    );
+    if (!forgotPassUser) {
+      throw new NotFoundException('No user matches this reset code');
+    }
+    // check the update time +15minutes
+    if (dateNow > forgotPassUser.updatedAt + 900000) {
+      throw new ForbiddenException('reset code is expired');
+    }
+    return {
+      success: true,
+      email: forgotPassUser.email,
+      resetCode: forgotPassUser.resetCode,
+    };
+  }
+
+  public async resetForgotPassword(body: ForgotPasswordDto) {
+    const { resetCode, email, newPassword } = body;
+    const forgorPasswordUser =
+      await this.userService.findForgotPasswordUserByCodeAndEmail(
+        resetCode,
+        email,
+      );
+    if (!forgorPasswordUser) {
+      throw new ForbiddenException('reset code is expired');
+    }
+    // hash the password
+    const pass = await this.hashPassword(newPassword);
+    const updatedUser = this.userService.updateForgotPassword(email, pass);
+    if (!updatedUser) {
+      throw new NotFoundException('something went wrong');
+    }
+    return updatedUser;
+  }
+
+  public async updatePassword(user: User, pass: PassUpdateUserDto) {
+    const foundUser = await this.userService.findOneById(user._id);
+    // check old password
+    const match = await this.comparePassword(
+      pass.oldPassword,
+      foundUser.password,
+    );
+    if (!match) {
+      throw new ForbiddenException('wrong password');
+    }
+    // check new password
+    const isNewTheSame = await this.comparePassword(
+      pass.newPassword,
+      foundUser.password,
+    );
+    if (isNewTheSame) {
+      throw new ForbiddenException('New password is the old one!');
+    }
+    // hash the new password
+    const hash = await this.hashPassword(pass.newPassword);
+    const updatedUser = this.userService.updateForgotPassword(user.email, hash);
+    if (!updatedUser) {
+      throw new NotFoundException('something went wrong');
+    }
+
+    return updatedUser;
   }
 
   private async generateToken(user) {
