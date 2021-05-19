@@ -19,7 +19,7 @@ export class DoesUserExist implements CanActivate {
   }
 
   async validateRequest(request) {
-    const email = request.body.email.toLowerCase();
+    const email = request.body.email?.toLowerCase();
     const userExist = await this.userService.findOneByEmail(email);
     if (userExist) {
       throw new ForbiddenException('This email already exist');
