@@ -24,7 +24,7 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository. blueptint authentication (email, facebook, forgot password, reset password).
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository. blueprint authentication (email, facebook, forgot password, reset password).
 
 ## Installation
 
