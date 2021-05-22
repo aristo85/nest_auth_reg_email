@@ -4,6 +4,7 @@ import { IsNotEmpty, MinLength, IsEmail, IsEnum } from 'class-validator';
 enum Gender {
   MALE = 'male',
   FEMALE = 'female',
+  OR = ''
 }
 
 export class CreateUserDto {
@@ -22,11 +23,13 @@ export class CreateUserDto {
   readonly password: string;
 
   @ApiProperty({ enum: ['male', 'female'] })
-  @IsNotEmpty()
   @IsEnum(Gender, {
     message: 'gender must be either male or female',
   })
   readonly gender: Gender;
+  
+  @ApiProperty()
+  readonly facebookData: any;
 }
 
 export class ConfirmAccountDto {

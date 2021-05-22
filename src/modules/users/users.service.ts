@@ -33,8 +33,8 @@ export class UsersService {
     );
   }
 
-  async create(inactiveUser): Promise<User> {
-    const { name, email, password, gender, updatedAt } = inactiveUser;
+  async create(userData): Promise<User> {
+    const { name, email, password, gender, updatedAt, facebookData } = userData;
     // activate account
     const newUser = new this.userModel({
       name,
@@ -42,8 +42,18 @@ export class UsersService {
       password,
       gender,
       updatedAt,
+      facebookData,
     });
     return await newUser.save();
+  }
+
+  async updateUserWithFB(userData: { email: string; facebookData: any }) {
+    let date = new Date().getTime();
+    return await this.userModel.findOneAndUpdate(
+      { email: userData.email },
+      { facebookData: userData.facebookData, updatedAt: date },
+      { new: true },
+    );
   }
 
   async createForgotPasswordRequest(email: string) {
@@ -105,6 +115,13 @@ export class UsersService {
   async clearExpireInactiveUser() {
     const currentDate = new Date().getTime() - 900000;
     return await this.inactiveUserModel.deleteMany({
+      updatedAt: { $lt: currentDate },
+    });
+  }
+
+  async clearExpireForgotPassUser() {
+    const currentDate = new Date().getTime() - 900000;
+    return await this.forgotPasswordUserModel.deleteMany({
       updatedAt: { $lt: currentDate },
     });
   }

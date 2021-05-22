@@ -6,6 +6,7 @@ export const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   gender: { type: String, required: true },
   updatedAt: { type: Number, required: true },
+  facebookData: { type: Object, required: false },
 });
 
 export interface User {
@@ -15,4 +16,5 @@ export interface User {
   password: string;
   gender: string;
   updatedAt: number;
+  facebookData: any;
 }

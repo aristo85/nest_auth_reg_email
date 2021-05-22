@@ -8,6 +8,7 @@ export class CronService {
   @Cron('*/15 * * * *')
   async runEveryHour() {
     await this.userService.clearExpireInactiveUser();
-    console.log('everyHour');
+    await this.userService.clearExpireForgotPassUser();
+    console.log('every15min');
   }
 }

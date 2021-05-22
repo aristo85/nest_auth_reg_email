@@ -9,6 +9,7 @@ import {
   sendConfirmationEmail,
   sendForgotPasswordEmail,
 } from 'src/core/config/nodemailer.config';
+import { CreateUserDto } from '../users/dto/create-user.dto';
 import { ForgotPasswordDto } from '../users/dto/forgotPassword.user.dto';
 import { PassUpdateUserDto } from '../users/dto/passUpdate-user.dto';
 import { User } from '../users/models/user.model';
@@ -88,6 +89,39 @@ export class AuthService {
     return { user: result, token };
   }
 
+  public async createUserFromFacebook(userData: CreateUserDto) {
+    const foundUser = await this.userService.findOneByEmail(userData.email);
+    if (!foundUser) {
+      let updatedAt = new Date().getTime();
+      // create the user
+      const newUser = await this.userService.create({ ...userData, updatedAt });
+
+      // tslint:disable-next-line: no-string-literal
+      const { password, ...result } = newUser['_doc'];
+
+      // generate token
+      const token = await this.generateToken(result);
+
+      // return the user and the token
+      return { user: result, token };
+    } else {
+      // create the user
+      const updateUser = await this.userService.updateUserWithFB({
+        email: foundUser.email,
+        facebookData: userData.facebookData,
+      });
+
+      // tslint:disable-next-line: no-string-literal
+      const { password, ...result } = updateUser['_doc'];
+
+      // generate token
+      const token = await this.generateToken(result);
+
+      // return the user and the token
+      return { user: result, token };
+    }
+  }
+
   public async forgotPassword(email: string) {
     // chek email
     const user = await this.userService.findOneByEmail(email);
@@ -135,11 +169,22 @@ export class AuthService {
     }
     // hash the password
     const pass = await this.hashPassword(newPassword);
-    const updatedUser = this.userService.updateForgotPassword(email, pass);
+    const updatedUser = await this.userService.updateForgotPassword(
+      email,
+      pass,
+    );
     if (!updatedUser) {
       throw new NotFoundException('something went wrong');
     }
-    return updatedUser;
+    // console.log(updatedUser)
+    // return updatedUser
+    // tslint:disable-next-line: no-string-literal
+    const { password, ...result } = updatedUser['_doc'];
+
+    // generate token
+    const token = await this.generateToken(result);
+
+    return { user: result, token };
   }
 
   public async updatePassword(user: User, pass: PassUpdateUserDto) {

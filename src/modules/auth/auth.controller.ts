@@ -115,4 +115,14 @@ export class AuthController {
     }
     return await this.authService.updatePassword(user, body);
   }
+
+  
+  @ApiResponse({ status: 200 })
+  @ApiBadRequestResponse({ status: 400, description: 'Bad request' })
+  @ApiForbiddenResponse({ status: 403, description: 'Forbidden' })
+  @Post('account/facebook')
+  async createFacebookleUser(@Body() body: CreateUserDto) {
+    return await this.authService.createUserFromFacebook(body);
+  }
+
 }
