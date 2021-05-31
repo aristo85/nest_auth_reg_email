@@ -108,7 +108,7 @@ export class AuthController {
     @Param('id') id: number,
     @Body() body: PassUpdateUserDto,
     @AuthUser() user: User,
-  ): Promise<User> {
+  ): Promise<{ success: boolean }> {
     // check id
     if (user._id !== id) {
       throw new ForbiddenException('not your ID');
@@ -116,7 +116,6 @@ export class AuthController {
     return await this.authService.updatePassword(user, body);
   }
 
-  
   @ApiResponse({ status: 200 })
   @ApiBadRequestResponse({ status: 400, description: 'Bad request' })
   @ApiForbiddenResponse({ status: 403, description: 'Forbidden' })
@@ -124,5 +123,4 @@ export class AuthController {
   async createFacebookleUser(@Body() body: CreateUserDto) {
     return await this.authService.createUserFromFacebook(body);
   }
-
 }

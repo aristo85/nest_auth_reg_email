@@ -212,7 +212,7 @@ export class AuthService {
       throw new NotFoundException('something went wrong');
     }
 
-    return updatedUser;
+    return { success: true };
   }
 
   private async generateToken(user) {
